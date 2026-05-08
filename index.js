@@ -7,13 +7,13 @@ import { createWorktree, removeWorktree, isInWorktree } from "./src/worktree.js"
 import { disconnectMcp } from "./src/mcp.js"
 import { printBanner, c } from "./src/ui.js"
 import { setOutputFormat, isJson } from "./src/output.js"
+import { handleCommand } from "./src/commands.js"
 
 if (!process.env.DEEPSEEK_API_KEY) {
   console.error(c.red("Error: DEEPSEEK_API_KEY is not set. Copy .env.example to .env and add your key."))
   process.exit(1)
 }
 
-// Парсинг флагов: --think, --worktree, --output-format=json
 const args = process.argv.slice(2)
 const useThinking = args.includes("--think")
 const useWorktree = args.includes("--worktree")
@@ -30,36 +30,28 @@ async function shutdown() {
 process.on("SIGINT", shutdown)
 process.on("SIGTERM", shutdown)
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-})
-
-function ask(prompt) {
-  return new Promise(resolve => rl.question(prompt, resolve))
-}
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+function ask(prompt) { return new Promise(resolve => rl.question(prompt, resolve)) }
 
 async function main() {
   await loadConfig()
 
   if (useThinking) {
     enableThinking()
-    console.log(c.dim("[mode] Extended thinking enabled (deepseek-reasoner)"))
+    console.log(c.dim("[mode] Extended thinking (deepseek-reasoner)"))
   }
 
   if (useWorktree) {
     try {
       const wt = await createWorktree()
       process.chdir(wt.path)
-      console.log(c.dim(`[worktree] Working in isolated branch: ${wt.branch}`))
+      console.log(c.dim(`[worktree] Branch: ${wt.branch}`))
     } catch (err) {
       console.error(c.red(`[worktree] ${err.message}`))
     }
   }
 
-  if (!isJson()) printBanner()
-
-  // json-режим: читаем один промпт из аргументов или stdin и выходим
+  // json-режим — одиночный запрос без REPL
   if (isJson()) {
     const prompt = args.find(a => !a.startsWith("--"))
     if (prompt) {
@@ -70,15 +62,27 @@ async function main() {
       const input = chunks.join("").trim()
       if (input) await agentLoop(input)
     }
+    rl.close()
+    await shutdown()
     return
   }
 
+  printBanner()
+
   while (true) {
     const input = await ask(c.bold("You: "))
-    if (!input.trim() || input.trim() === "exit") break
+    const trimmed = input.trim()
+    if (!trimmed || trimmed === "exit" || trimmed === "/exit" || trimmed === "/quit") break
+
+    // Команды начинаются с /
+    if (trimmed.startsWith("/")) {
+      const handled = await handleCommand(trimmed)
+      if (!handled) console.log(c.dim(`Unknown command: ${trimmed.split(" ")[0]}. Type /help for list.\n`))
+      continue
+    }
 
     try {
-      await agentLoop(input)
+      await agentLoop(trimmed)
       console.log()
     } catch (err) {
       console.error(c.red(`\nError: ${err.message}\n`))

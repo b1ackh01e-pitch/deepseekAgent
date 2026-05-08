@@ -17,11 +17,20 @@ import { getModel, printReasoning } from "./thinking.js"
 import { getConfig } from "./config.js"
 import { c } from "./ui.js"
 import { print, emit } from "./output.js"
+import {
+  getMessages, setMessages, pushMessage,
+  createCheckpoint, incrementTurn
+} from "./session.js"
 
-const client = new OpenAI({
-  baseURL: "https://api.deepseek.com",
-  apiKey: process.env.DEEPSEEK_API_KEY
-})
+let client = null
+
+function getClient() {
+  if (!client) client = new OpenAI({
+    baseURL: "https://api.deepseek.com",
+    apiKey: process.env.DEEPSEEK_API_KEY
+  })
+  return client
+}
 
 let _initialized = false
 let TOOLS = []
@@ -31,7 +40,6 @@ async function initialize() {
   _initialized = true
 
   const mcpTools = await loadMcpTools()
-
   const { disallowedTools } = getConfig()
 
   TOOLS = [
@@ -48,11 +56,7 @@ async function initialize() {
 function buildOpenAITools() {
   return TOOLS.map(t => ({
     type: "function",
-    function: {
-      name: t.name,
-      description: t.description,
-      parameters: t.parameters
-    }
+    function: { name: t.name, description: t.description, parameters: t.parameters }
   }))
 }
 
@@ -60,11 +64,9 @@ async function executeTool(name, args) {
   const tool = TOOLS.find(t => t.name === name)
   if (!tool) return `Unknown tool: ${name}`
 
-  // Хук PreToolUse
   const allowed = await runHooks("PreToolUse", { tool: name, args })
   if (!allowed) return `Blocked by PreToolUse hook`
 
-  // Проверка разрешений
   if (!tool.isReadOnly) {
     const perm = await checkPermission(name, args)
     if (!perm.allowed) return `Rejected: ${perm.reason}`
@@ -77,38 +79,40 @@ async function executeTool(name, args) {
     result = `Error: ${err.message}`
   }
 
-  // Хук PostToolUse
   await runHooks("PostToolUse", { tool: name, args, result: String(result).slice(0, 500) })
-
   return result
 }
 
 export async function agentLoop(userMessage) {
   await initialize()
-
-  // Хук UserPromptSubmit
   await runHooks("UserPromptSubmit", { message: userMessage })
 
-  const memory = await loadMemory()
-  const systemContent = [
-    "You are a helpful coding assistant with access to tools.",
-    "Always read a file before editing it.",
-    "Use grep/glob to explore the codebase before making changes.",
-    "Use todo_write to track multi-step tasks.",
-    "Be concise in your responses.",
-    memory ? `\n\n${memory}` : ""
-  ].join(" ")
+  // Инициализируем messages если сессия пустая
+  if (getMessages().length === 0) {
+    const memory = await loadMemory()
+    const systemContent = [
+      "You are a helpful coding assistant with access to tools.",
+      "Always read a file before editing it.",
+      "Use grep/glob to explore the codebase before making changes.",
+      "Use todo_write to track multi-step tasks.",
+      "Be concise in your responses.",
+      memory ? `\n\n${memory}` : ""
+    ].join(" ")
+    pushMessage({ role: "system", content: systemContent })
+  }
 
-  let messages = [
-    { role: "system", content: systemContent },
-    { role: "user", content: userMessage }
-  ]
+  // Создаём чекпоинт перед каждым ходом
+  createCheckpoint()
+  incrementTurn()
+
+  pushMessage({ role: "user", content: userMessage })
 
   while (true) {
-    // Сжатие контекста если нужно
-    messages = await compactIfNeeded(messages, client)
+    let messages = getMessages()
+    messages = await compactIfNeeded(messages, getClient())
+    setMessages(messages)
 
-    const stream = await client.chat.completions.create({
+    const stream = await getClient().chat.completions.create({
       model: getModel(),
       messages,
       tools: buildOpenAITools(),
@@ -126,12 +130,8 @@ export async function agentLoop(userMessage) {
       const delta = chunk.choices[0]?.delta
       finishReason = chunk.choices[0]?.finish_reason ?? finishReason
 
-      // Extended thinking (deepseek-reasoner)
       if (printReasoning(chunk)) {
-        if (!hasReasoning) {
-          print(c.dim("\n[thinking]\n"))
-          hasReasoning = true
-        }
+        if (!hasReasoning) { print(c.dim("\n[thinking]\n")); hasReasoning = true }
         continue
       }
 
@@ -160,7 +160,7 @@ export async function agentLoop(userMessage) {
 
     if (fullContent) print("\n")
 
-    messages.push({
+    pushMessage({
       role: "assistant",
       content: fullContent || null,
       tool_calls: toolCalls.length ? toolCalls : undefined
@@ -174,18 +174,13 @@ export async function agentLoop(userMessage) {
     if (finishReason === "tool_calls") {
       for (const call of toolCalls) {
         let args
-        try {
-          args = JSON.parse(call.function.arguments)
-        } catch {
-          args = {}
-        }
+        try { args = JSON.parse(call.function.arguments) } catch { args = {} }
 
         print(c.cyan(`\n[tool] ${call.function.name} `) + c.dim(JSON.stringify(args)) + "\n")
         emit("tool_call", { tool: call.function.name, args })
 
         const result = await executeTool(call.function.name, args)
 
-        // Проверяем не вернул ли инструмент изображение
         let toolContent
         try {
           const parsed = JSON.parse(result)
@@ -203,11 +198,7 @@ export async function agentLoop(userMessage) {
           toolContent = String(result)
         }
 
-        messages.push({
-          role: "tool",
-          tool_call_id: call.id,
-          content: toolContent
-        })
+        pushMessage({ role: "tool", tool_call_id: call.id, content: toolContent })
       }
     }
   }

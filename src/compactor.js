@@ -12,11 +12,11 @@ function estimateTokens(messages) {
   return Math.ceil(text.length / 4)
 }
 
-export async function compactIfNeeded(messages, client) {
+export async function compactIfNeeded(messages, client, force = false) {
   const { contextLimit } = getConfig()
   const tokens = estimateTokens(messages)
 
-  if (tokens < contextLimit * 0.8) return messages
+  if (!force && tokens < contextLimit * 0.8) return messages
 
   process.stdout.write(c.dim(`\n[compactor] Context ~${tokens} tokens, compacting...\n`))
 
