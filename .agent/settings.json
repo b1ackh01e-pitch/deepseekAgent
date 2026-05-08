@@ -1,0 +1,10 @@
+{
+  "model": "deepseek-chat",
+  "thinkingModel": "deepseek-reasoner",
+  "contextLimit": 60000,
+  "alwaysAllow": ["read_file", "glob", "grep", "todo_read"],
+  "neverAllow": [],
+  "disallowedTools": [],
+  "dangerouslyDisableSandbox": false,
+  "mcpServers": {}
+}
