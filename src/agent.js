@@ -238,17 +238,7 @@ export async function agentLoop(userMessage) {
 
         const result = await executeTool(call.function.name, args)
 
-        let toolContent
-        try {
-          const parsed = JSON.parse(result)
-          if (parsed.__type === "image") {
-            print(c.dim(`  ↳ изображение ${parsed.mediaType}\n`))
-            emit("tool_result", { tool: call.function.name, result: "[image]" })
-            toolContent = [{ type: "image_url", image_url: { url: `data:${parsed.mediaType};base64,${parsed.base64}` } }]
-          }
-        } catch {}
-
-        if (!toolContent) {
+        {
           const full = String(result)
           const CONTEXT_LIMIT = 12000
           toolContent = full.length > CONTEXT_LIMIT
