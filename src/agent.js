@@ -239,16 +239,14 @@ export async function agentLoop(userMessage) {
 
         const result = await executeTool(call.function.name, args)
 
-        {
-          const full = String(result)
-          const CONTEXT_LIMIT = 12000
-          toolContent = full.length > CONTEXT_LIMIT
-            ? full.slice(0, CONTEXT_LIMIT) + `\n[... truncated, ${full.length - CONTEXT_LIMIT} chars omitted]`
-            : full
-          const summary = formatToolResult(call.function.name, args, full)
-          if (summary) print(c.dim(`  ↳ ${summary}\n`))
-          emit("tool_result", { tool: call.function.name, result: full.slice(0, 300) })
-        }
+        const full = String(result)
+        const CONTEXT_LIMIT = 12000
+        const toolContent = full.length > CONTEXT_LIMIT
+          ? full.slice(0, CONTEXT_LIMIT) + `\n[... truncated, ${full.length - CONTEXT_LIMIT} chars omitted]`
+          : full
+        const summary = formatToolResult(call.function.name, args, full)
+        if (summary) print(c.dim(`  ↳ ${summary}\n`))
+        emit("tool_result", { tool: call.function.name, result: full.slice(0, 300) })
 
         pushMessage({ role: "tool", tool_call_id: call.id, content: toolContent })
       }
