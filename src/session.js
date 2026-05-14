@@ -1,3 +1,8 @@
+import fs from "fs/promises"
+import path from "path"
+
+const SESSION_FILE = path.join(process.cwd(), ".agent", "session.json")
+
 let _messages = []
 let _checkpoints = []
 let _turnCount = 0
@@ -8,6 +13,27 @@ export function pushMessage(msg) { _messages.push(msg) }
 export function clearMessages() { _messages = []; _turnCount = 0 }
 export function getTurnCount() { return _turnCount }
 export function incrementTurn() { _turnCount++ }
+export function setTurnCount(n) { _turnCount = n }
+
+export async function saveSession() {
+  if (_messages.length === 0) return
+  try {
+    await fs.mkdir(path.dirname(SESSION_FILE), { recursive: true })
+    await fs.writeFile(SESSION_FILE, JSON.stringify({
+      timestamp: Date.now(),
+      turnCount: _turnCount,
+      messages: _messages
+    }), "utf-8")
+  } catch {}
+}
+
+export async function loadSession() {
+  try {
+    return JSON.parse(await fs.readFile(SESSION_FILE, "utf-8"))
+  } catch {
+    return null
+  }
+}
 
 export function createCheckpoint() {
   const cp = {

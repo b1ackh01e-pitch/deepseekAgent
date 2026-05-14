@@ -9,6 +9,7 @@ import { printBanner, c } from "./src/ui.js"
 import { setOutputFormat, isJson } from "./src/output.js"
 import { handleCommand } from "./src/commands.js"
 import { rl, ask } from "./src/rl.js"
+import { saveSession } from "./src/session.js"
 
 if (!process.env.DEEPSEEK_API_KEY) {
   console.error(c.red("Error: DEEPSEEK_API_KEY is not set. Copy .env.example to .env and add your key."))
@@ -22,6 +23,7 @@ const outputFormat = args.find(a => a.startsWith("--output-format="))?.split("="
 setOutputFormat(outputFormat)
 
 async function shutdown() {
+  await saveSession()
   if (isInWorktree()) await removeWorktree()
   await disconnectMcp()
   console.log(c.dim("\nBye."))

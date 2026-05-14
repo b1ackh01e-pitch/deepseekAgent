@@ -5,7 +5,7 @@ import OpenAI from "openai"
 import {
   getMessages, setMessages, clearMessages,
   createCheckpoint, getCheckpoints, restoreCheckpoint,
-  getTurnCount
+  getTurnCount, setTurnCount, loadSession
 } from "./session.js"
 import { compactIfNeeded } from "./compactor.js"
 import { getConfig } from "./config.js"
@@ -367,6 +367,44 @@ export async function cmdLoop(args) {
 }
 
 // ─────────────────────────────────────────────
+// /resume — восстановить предыдущую сессию
+// ─────────────────────────────────────────────
+export async function cmdResume() {
+  if (getMessages().length > 1) {
+    print(c.dim("[resume] Сессия уже активна. Сначала выполните /clear.\n"))
+    return
+  }
+
+  const saved = await loadSession()
+  if (!saved) {
+    print(c.dim("[resume] Нет сохранённой сессии.\n"))
+    return
+  }
+
+  const date = new Date(saved.timestamp).toLocaleString()
+  const userMsgs = saved.messages.filter(m => m.role === "user")
+  const lastMsg = userMsgs.at(-1)
+  const preview = typeof lastMsg?.content === "string"
+    ? lastMsg.content.slice(0, 80) + (lastMsg.content.length > 80 ? "…" : "")
+    : ""
+
+  print(c.bold(`\nСохранённая сессия: ${date}\n`))
+  print(c.dim(`  Ходов: ${saved.turnCount}  Сообщений: ${saved.messages.length}\n`))
+  if (preview) print(c.dim(`  Последнее: "${preview}"\n`))
+  print(c.yellow("\nВосстановить? [y/N] "))
+
+  const answer = (await waitForInput()).trim().toLowerCase()
+  if (answer !== "y") {
+    print(c.dim("[resume] Отменено.\n"))
+    return
+  }
+
+  setMessages(saved.messages)
+  setTurnCount(saved.turnCount)
+  print(c.dim(`[resume] Сессия восстановлена. Ходов: ${saved.turnCount}, сообщений: ${saved.messages.length}.\n\n`))
+}
+
+// ─────────────────────────────────────────────
 // /model — информация о доступных моделях
 // ─────────────────────────────────────────────
 export function cmdModel() {
@@ -407,6 +445,7 @@ export async function handleCommand(input) {
     case "loop":
     case "proactive":    await cmdLoop(args); return true
     case "model":        cmdModel(); return true
+    case "resume":       await cmdResume(); return true
     case "help":
     case "?":            printHelp(); return true
     default:             return false
@@ -430,6 +469,7 @@ function printHelp() {
     ["/batch <задача>",   "разбить задачу и выполнить параллельно"],
     ["/loop [N] <промпт>","запускать промпт каждые N минут (повтор — стоп)"],
     ["/model",            "информация о доступных моделях"],
+    ["/resume",           "восстановить предыдущую сессию"],
     ["/help",             "эта справка"],
   ]
   print(c.bold("\nКоманды:\n"))
