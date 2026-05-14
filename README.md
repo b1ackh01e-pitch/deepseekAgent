@@ -11,7 +11,8 @@ git clone https://github.com/skydeex/deepseekAgent.git
 cd deepseekAgent
 npm install
 npm install -g .          # зарегистрировать команду agent глобально
-cp .env.example .env
+copy .env.example .env   # Windows
+# cp .env.example .env  # Linux / macOS
 # вставить DEEPSEEK_API_KEY в .env
 agent
 ```
