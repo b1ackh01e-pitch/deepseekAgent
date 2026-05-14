@@ -1,27 +1,5 @@
 import fs from "fs/promises"
-
-function makeDiff(original, updated, filePath) {
-  const oldLines = original.split("\n")
-  const newLines = updated.split("\n")
-  const lines = []
-
-  lines.push(`--- ${filePath}`)
-  lines.push(`+++ ${filePath}`)
-
-  const maxLen = Math.max(oldLines.length, newLines.length)
-  for (let i = 0; i < maxLen; i++) {
-    const oldLine = oldLines[i]
-    const newLine = newLines[i]
-    if (oldLine === newLine) {
-      lines.push(`  ${oldLine ?? ""}`)
-    } else {
-      if (oldLine !== undefined) lines.push(`- ${oldLine}`)
-      if (newLine !== undefined) lines.push(`+ ${newLine}`)
-    }
-  }
-
-  return lines.join("\n")
-}
+import { renderEditDiff } from "../diff.js"
 
 export const editTool = {
   name: "edit_file",
@@ -49,9 +27,7 @@ export const editTool = {
     }
 
     const updated = original.replace(old_string, new_string)
-    const diff = makeDiff(original, updated, filePath)
-
-    process.stdout.write(`\n${diff}\n`)
+    process.stdout.write(renderEditDiff(original, filePath, old_string, new_string))
 
     await fs.writeFile(filePath, updated, "utf-8")
     return `Edited ${filePath}`
