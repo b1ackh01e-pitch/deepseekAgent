@@ -7,6 +7,21 @@ import { dirname, join } from "path"
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
 require("dotenv").config({ path: join(__dirname, ".env") })
+
+// agent update — обновить агент из репозитория
+if (process.argv[2] === "update") {
+  const { execSync } = require("child_process")
+  console.log("Updating deepseek-agent...")
+  try {
+    execSync("git pull", { cwd: __dirname, stdio: "inherit" })
+    execSync("npm install", { cwd: __dirname, stdio: "inherit" })
+    console.log("Done. Restart agent to apply changes.")
+  } catch (e) {
+    console.error("Update failed:", e.message)
+    process.exit(1)
+  }
+  process.exit(0)
+}
 import { agentLoop } from "./src/agent.js"
 import { loadConfig } from "./src/config.js"
 import { enableThinking } from "./src/thinking.js"

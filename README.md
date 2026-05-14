@@ -18,6 +18,12 @@ agent
 
 Получить API-ключ: [platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys)
 
+## Обновление
+
+```bash
+agent update
+```
+
 ## Требования
 
 - Node.js >= 18
