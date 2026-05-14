@@ -1,5 +1,12 @@
 #!/usr/bin/env node
-import "dotenv/config"
+import { createRequire } from "module"
+import { fileURLToPath } from "url"
+import { dirname, join } from "path"
+
+// Грузим .env из директории самого агента, а не из cwd
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const require = createRequire(import.meta.url)
+require("dotenv").config({ path: join(__dirname, ".env") })
 import { agentLoop } from "./src/agent.js"
 import { loadConfig } from "./src/config.js"
 import { enableThinking } from "./src/thinking.js"
