@@ -15,10 +15,13 @@ require("dotenv").config({ path: join(__dirname, ".env") })
 // agent update — обновить агент из репозитория
 if (process.argv[2] === "update") {
   const { execSync } = require("child_process")
+  const run = cmd => execSync(cmd, { cwd: __dirname, stdio: "inherit" })
   console.log("Updating deepseek-agent...")
   try {
-    execSync("git pull", { cwd: __dirname, stdio: "inherit" })
-    execSync("npm install", { cwd: __dirname, stdio: "inherit" })
+    run("git stash")
+    run("git pull")
+    run("git stash pop")
+    run("npm install")
     console.log("Done. Restart agent to apply changes.")
   } catch (e) {
     console.error("Update failed:", e.message)
