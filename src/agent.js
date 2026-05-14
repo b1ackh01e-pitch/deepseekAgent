@@ -150,6 +150,7 @@ export async function agentLoop(userMessage) {
       "Use grep/glob to explore the codebase before making changes.",
       "Use todo_write to track multi-step tasks.",
       "Be concise in your responses.",
+      "Do not attempt to read binary files (images, archives, executables, media, fonts, databases) unless the user explicitly asks you to inspect them.",
       language
         ? `Always respond in ${language}. Code, commands, variable names, and technical identifiers must remain in English.`
         : "Always respond in the same language the user is writing in. Do not switch languages mid-conversation.",

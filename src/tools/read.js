@@ -17,7 +17,7 @@ export const readTool = {
     const ext = path.extname(filePath).toLowerCase()
 
     if (BINARY_EXTS.has(ext)) {
-      return `Error: "${filePath}" is a binary file (${ext}). Reading binary files is not supported.`
+      return `Error: "${filePath}" is a binary file (${ext}). Use bash to inspect it if needed.`
     }
 
     return await fs.readFile(filePath, "utf-8")
