@@ -10,9 +10,10 @@
 git clone https://github.com/skydeex/deepseekAgent.git
 cd deepseekAgent
 npm install
+npm install -g .          # зарегистрировать команду agent глобально
 cp .env.example .env
 # вставить DEEPSEEK_API_KEY в .env
-npm start
+agent
 ```
 
 Получить API-ключ: [platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys)
@@ -25,10 +26,10 @@ npm start
 ## Запуск
 
 ```bash
-npm start                                      # обычный режим
-npm start -- --think                           # режим размышлений (deepseek-reasoner)
-npm start -- --worktree                        # git-изоляция в отдельном worktree
-npm start -- --output-format=json "промпт"    # CI/скрипты — вывод в JSON
+agent                                          # обычный режим
+agent --think                                  # режим размышлений (deepseek-reasoner)
+agent --worktree                               # git-изоляция в отдельном worktree
+agent --output-format=json "промпт"           # CI/скрипты — вывод в JSON
 ```
 
 ## Slash-команды
@@ -147,8 +148,8 @@ Groq                     baseURL: https://api.groq.com/openai/v1 model: llama-3.
 ## JSON-режим (CI/скрипты)
 
 ```bash
-node index.js --output-format=json "что делает index.js?"
-echo "напиши hello world" | node index.js --output-format=json
+agent --output-format=json "что делает index.js?"
+echo "напиши hello world" | agent --output-format=json
 ```
 
 Каждое событие — отдельная строка JSON:
