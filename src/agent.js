@@ -87,6 +87,55 @@ async function executeTool(name, args) {
   return result
 }
 
+function formatToolCall(name, args) {
+  switch (name) {
+    case "read_file":    return `Read ${args.path}`
+    case "write_file":   return `Write ${args.path}`
+    case "edit_file":    return `Edit ${args.path}`
+    case "bash":         return `Bash ${(args.command ?? "").slice(0, 72)}`
+    case "glob":         return `Glob ${args.pattern}${args.cwd ? ` in ${args.cwd}` : ""}`
+    case "grep":         return `Grep "${args.pattern}"${args.dir ? ` in ${args.dir}` : ""}`
+    case "web_search":   return `Search "${args.query}"`
+    case "todo_read":    return `Todo read`
+    case "todo_write":   return `Todo write`
+    case "task":         return `Task ${(args.description ?? args.parallel?.join(", ") ?? "").slice(0, 60)}`
+    default:             return `${name} ${JSON.stringify(args).slice(0, 60)}`
+  }
+}
+
+function formatToolResult(name, args, result) {
+  // write_file и edit_file уже вывели diff сами — ничего не добавляем
+  if (name === "write_file" || name === "edit_file") return null
+
+  if (name === "read_file") {
+    const lines = result.split("\n").length
+    return `${lines} строк, ${result.length} символов`
+  }
+
+  if (name === "glob") {
+    const files = result.split("\n").filter(Boolean)
+    return files.length ? `${files.length} файлов` : "нет совпадений"
+  }
+
+  if (name === "grep") {
+    if (result === "No matches found.") return "нет совпадений"
+    const count = result.split("\n").filter(Boolean).length
+    return `${count} совпадений`
+  }
+
+  if (name === "web_search") {
+    return result.slice(0, 120) + (result.length > 120 ? "…" : "")
+  }
+
+  // bash и остальные — показываем вывод как есть (он уже обрезан в bash.js)
+  const trimmed = result.trim()
+  if (!trimmed) return null
+  const lines = trimmed.split("\n")
+  return lines.length > 1
+    ? lines.slice(0, 8).join("\n  ") + (lines.length > 8 ? `\n  … ещё ${lines.length - 8} строк` : "")
+    : trimmed
+}
+
 export async function agentLoop(userMessage) {
   await initialize()
   await runHooks("UserPromptSubmit", { message: userMessage })
@@ -184,7 +233,7 @@ export async function agentLoop(userMessage) {
         let args
         try { args = JSON.parse(call.function.arguments) } catch { args = {} }
 
-        print(c.cyan(`\n[tool] ${call.function.name} `) + c.dim(JSON.stringify(args)) + "\n")
+        print(c.cyan("\n● " + formatToolCall(call.function.name, args)) + "\n")
         emit("tool_call", { tool: call.function.name, args })
 
         const result = await executeTool(call.function.name, args)
@@ -193,7 +242,7 @@ export async function agentLoop(userMessage) {
         try {
           const parsed = JSON.parse(result)
           if (parsed.__type === "image") {
-            print(c.dim(`[result] [image ${parsed.mediaType}]\n`))
+            print(c.dim(`  ↳ изображение ${parsed.mediaType}\n`))
             emit("tool_result", { tool: call.function.name, result: "[image]" })
             toolContent = [{ type: "image_url", image_url: { url: `data:${parsed.mediaType};base64,${parsed.base64}` } }]
           }
@@ -205,9 +254,9 @@ export async function agentLoop(userMessage) {
           toolContent = full.length > CONTEXT_LIMIT
             ? full.slice(0, CONTEXT_LIMIT) + `\n[... truncated, ${full.length - CONTEXT_LIMIT} chars omitted]`
             : full
-          const preview = full.slice(0, 300)
-          print(c.dim(`[result] ${preview}${full.length > 300 ? "…" : ""}\n`))
-          emit("tool_result", { tool: call.function.name, result: preview })
+          const summary = formatToolResult(call.function.name, args, full)
+          if (summary) print(c.dim(`  ↳ ${summary}\n`))
+          emit("tool_result", { tool: call.function.name, result: full.slice(0, 300) })
         }
 
         pushMessage({ role: "tool", tool_call_id: call.id, content: toolContent })
