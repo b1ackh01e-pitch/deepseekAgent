@@ -81,7 +81,8 @@ agent --output-format=json "промпт"           # CI/скрипты — вы
   "neverAllow": [],
   "disallowedTools": [],
   "dangerouslyDisableSandbox": false,
-  "mcpServers": {}
+  "mcpServers": {},
+  "language": "Russian"
 }
 ```
 
@@ -92,6 +93,7 @@ agent --output-format=json "промпт"           # CI/скрипты — вы
 | `disallowedTools` | Инструменты, скрытые от модели полностью |
 | `dangerouslyDisableSandbox` | Снять ограничения sandbox в bash |
 | `mcpServers` | Подключение MCP-серверов |
+| `language` | Язык ответов агента (например `"Russian"`, `"English"`). Если не задан — агент подстраивается под язык пользователя |
 
 ## Память (AGENT.md)
 

@@ -9,7 +9,8 @@ const DEFAULTS = {
   neverAllow: [],
   disallowedTools: [],
   dangerouslyDisableSandbox: false,
-  mcpServers: {}
+  mcpServers: {},
+  language: null
 }
 
 let _config = null

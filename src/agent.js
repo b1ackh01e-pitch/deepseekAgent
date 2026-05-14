@@ -90,12 +90,16 @@ export async function agentLoop(userMessage) {
   // Инициализируем messages если сессия пустая
   if (getMessages().length === 0) {
     const memory = await loadMemory()
+    const { language } = getConfig()
     const systemContent = [
       "You are a helpful coding assistant with access to tools.",
       "Always read a file before editing it.",
       "Use grep/glob to explore the codebase before making changes.",
       "Use todo_write to track multi-step tasks.",
       "Be concise in your responses.",
+      language
+        ? `Always respond in ${language}. Code, commands, variable names, and technical identifiers must remain in English.`
+        : "Always respond in the same language the user is writing in. Do not switch languages mid-conversation.",
       memory ? `\n\n${memory}` : ""
     ].join(" ")
     pushMessage({ role: "system", content: systemContent })
