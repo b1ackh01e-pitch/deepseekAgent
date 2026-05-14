@@ -45,20 +45,19 @@ export async function checkPermission(toolName, args) {
   }
 
   // Показываем запрос с вариантами
+  let prompt
   if (filePath) {
     const dir = path.dirname(path.resolve(filePath))
-    process.stdout.write(
-      c.yellow(`\n[?] ${toolName} → ${filePath}\n`) +
-      c.dim(`    [y] один раз  [d] разрешить папку "${dir}"  [N] отклонить: `)
-    )
+    prompt =
+      c.yellow(`\n┌ [?] ${toolName} → ${filePath}\n`) +
+      c.yellow(`└ `) + c.dim(`[y/Enter] один раз  [d] разрешить папку "${dir}"  [N] отклонить: `)
   } else {
-    process.stdout.write(
-      c.yellow(`\n[?] ${toolName}(${JSON.stringify(args)})\n`) +
-      c.dim(`    [y] один раз  [a] всегда разрешать ${toolName}  [N] отклонить: `)
-    )
+    prompt =
+      c.yellow(`\n┌ [?] ${toolName}: ${JSON.stringify(args)}\n`) +
+      c.yellow(`└ `) + c.dim(`[y/Enter] один раз  [a] всегда разрешать ${toolName}  [N] отклонить: `)
   }
 
-  const answer = (await waitForInput()).trim().toLowerCase()
+  const answer = (await waitForInput(prompt)).trim().toLowerCase()
 
   if (answer === "d" && filePath) {
     _approvedDirs.add(path.dirname(path.resolve(filePath)))
@@ -70,7 +69,7 @@ export async function checkPermission(toolName, args) {
     return { allowed: true }
   }
 
-  if (answer === "y") {
+  if (answer === "y" || answer === "") {
     return { allowed: true }
   }
 

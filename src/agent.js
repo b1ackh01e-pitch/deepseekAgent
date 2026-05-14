@@ -147,7 +147,7 @@ export async function agentLoop(userMessage) {
     const systemContent = [
       "You are a helpful coding assistant with access to tools.",
       "Always read a file before editing it.",
-      "Use grep/glob to explore the codebase before making changes.",
+      "Use glob to list files and grep to search content — prefer these over bash for any read-only file exploration.",
       "Use todo_write to track multi-step tasks.",
       "Be concise in your responses.",
       "Do not attempt to read binary files (images, archives, executables, media, fonts, databases) unless the user explicitly asks you to inspect them.",

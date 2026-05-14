@@ -8,9 +8,9 @@ export const c = {
   bold:   s => `\x1b[1m${s}\x1b[0m`,
 }
 
-export async function waitForInput() {
+export async function waitForInput(prompt = "") {
   const { ask } = await import("./rl.js")
-  return ask("")
+  return ask(prompt)
 }
 
 export function printBanner() {
