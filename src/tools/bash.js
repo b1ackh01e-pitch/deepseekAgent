@@ -40,9 +40,12 @@ export const bashTool = {
       if (blocked) return blocked
     }
 
+    const LIMIT = 8000
     try {
-      const { stdout, stderr } = await execAsync(command, { timeout })
-      return stdout + (stderr ? `\nSTDERR: ${stderr}` : "")
+      const { stdout, stderr } = await execAsync(command, { timeout, maxBuffer: 10 * 1024 * 1024 })
+      let out = stdout + (stderr ? `\nSTDERR: ${stderr}` : "")
+      if (out.length > LIMIT) out = out.slice(0, LIMIT) + `\n[... truncated, ${out.length - LIMIT} chars omitted]`
+      return out
     } catch (err) {
       if (err.killed) return `Error: command timed out after ${timeout}ms`
       return `Error: ${err.message}`

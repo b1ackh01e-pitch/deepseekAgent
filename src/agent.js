@@ -53,11 +53,15 @@ async function initialize() {
   initTaskTool(agentLoop)
 }
 
+let _openAITools = null
 function buildOpenAITools() {
-  return TOOLS.map(t => ({
-    type: "function",
-    function: { name: t.name, description: t.description, parameters: t.parameters }
-  }))
+  if (!_openAITools) {
+    _openAITools = TOOLS.map(t => ({
+      type: "function",
+      function: { name: t.name, description: t.description, parameters: t.parameters }
+    }))
+  }
+  return _openAITools
 }
 
 async function executeTool(name, args) {
@@ -196,10 +200,14 @@ export async function agentLoop(userMessage) {
         } catch {}
 
         if (!toolContent) {
-          const preview = String(result).slice(0, 300)
-          print(c.dim(`[result] ${preview}${String(result).length > 300 ? "…" : ""}\n`))
+          const full = String(result)
+          const CONTEXT_LIMIT = 12000
+          toolContent = full.length > CONTEXT_LIMIT
+            ? full.slice(0, CONTEXT_LIMIT) + `\n[... truncated, ${full.length - CONTEXT_LIMIT} chars omitted]`
+            : full
+          const preview = full.slice(0, 300)
+          print(c.dim(`[result] ${preview}${full.length > 300 ? "…" : ""}\n`))
           emit("tool_result", { tool: call.function.name, result: preview })
-          toolContent = String(result)
         }
 
         pushMessage({ role: "tool", tool_call_id: call.id, content: toolContent })

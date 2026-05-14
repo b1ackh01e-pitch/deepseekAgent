@@ -44,6 +44,8 @@ export const grepTool = {
     }
 
     if (results.length === 0) return "No matches found."
-    return results.join("\n")
+    const LIMIT = 200
+    const truncated = results.length > LIMIT
+    return results.slice(0, LIMIT).join("\n") + (truncated ? `\n[... ${results.length - LIMIT} more matches omitted]` : "")
   }
 }
