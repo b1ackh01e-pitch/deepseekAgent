@@ -41,8 +41,12 @@ export const bashTool = {
     }
 
     const LIMIT = 8000
+    // На Windows переключаем консоль в UTF-8 перед командой
+    const cmd = process.platform === "win32"
+      ? `chcp 65001 >nul 2>&1 & ${command}`
+      : command
     try {
-      const { stdout, stderr } = await execAsync(command, { timeout, maxBuffer: 10 * 1024 * 1024 })
+      const { stdout, stderr } = await execAsync(cmd, { timeout, maxBuffer: 10 * 1024 * 1024, encoding: "utf8" })
       let out = stdout + (stderr ? `\nSTDERR: ${stderr}` : "")
       if (out.length > LIMIT) out = out.slice(0, LIMIT) + `\n[... truncated, ${out.length - LIMIT} chars omitted]`
       return out

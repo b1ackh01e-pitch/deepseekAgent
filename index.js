@@ -3,6 +3,10 @@ import { createRequire } from "module"
 import { fileURLToPath } from "url"
 import { dirname, join } from "path"
 
+// UTF-8 на stdout/stderr (важно для Windows)
+if (process.stdout.isTTY) process.stdout.setDefaultEncoding("utf8")
+if (process.stderr.isTTY) process.stderr.setDefaultEncoding("utf8")
+
 // Грузим .env из директории самого агента, а не из cwd
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const require = createRequire(import.meta.url)
