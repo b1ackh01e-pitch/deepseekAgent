@@ -8,15 +8,9 @@ export const c = {
   bold:   s => `\x1b[1m${s}\x1b[0m`,
 }
 
-export function waitForInput() {
-  return new Promise(resolve => {
-    process.stdin.resume()
-    process.stdin.setEncoding("utf-8")
-    process.stdin.once("data", data => {
-      process.stdin.pause()
-      resolve(data)
-    })
-  })
+export async function waitForInput() {
+  const { ask } = await import("./rl.js")
+  return ask("")
 }
 
 export function printBanner() {

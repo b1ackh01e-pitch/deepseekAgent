@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import "dotenv/config"
-import readline from "readline"
 import { agentLoop } from "./src/agent.js"
 import { loadConfig } from "./src/config.js"
 import { enableThinking } from "./src/thinking.js"
@@ -9,6 +8,7 @@ import { disconnectMcp } from "./src/mcp.js"
 import { printBanner, c } from "./src/ui.js"
 import { setOutputFormat, isJson } from "./src/output.js"
 import { handleCommand } from "./src/commands.js"
+import { rl, ask } from "./src/rl.js"
 
 if (!process.env.DEEPSEEK_API_KEY) {
   console.error(c.red("Error: DEEPSEEK_API_KEY is not set. Copy .env.example to .env and add your key."))
@@ -31,8 +31,6 @@ async function shutdown() {
 process.on("SIGINT", shutdown)
 process.on("SIGTERM", shutdown)
 
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-function ask(prompt) { return new Promise(resolve => rl.question(prompt, resolve)) }
 
 async function main() {
   await loadConfig()
