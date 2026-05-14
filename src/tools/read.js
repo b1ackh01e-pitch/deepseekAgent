@@ -1,5 +1,6 @@
 import fs from "fs/promises"
 import path from "path"
+import { BINARY_EXTS } from "../binary.js"
 
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp"])
 const IMAGE_MIME = {
@@ -23,6 +24,10 @@ export const readTool = {
   isReadOnly: true,
   async execute({ path: filePath }) {
     const ext = path.extname(filePath).toLowerCase()
+
+    if (BINARY_EXTS.has(ext) && !IMAGE_EXTS.has(ext)) {
+      return `Error: "${filePath}" is a binary file (${ext}). Reading binary files is not supported.`
+    }
 
     if (IMAGE_EXTS.has(ext)) {
       const data = await fs.readFile(filePath)

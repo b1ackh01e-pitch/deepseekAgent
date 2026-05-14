@@ -1,6 +1,7 @@
 import fs from "fs/promises"
 import path from "path"
 import fg from "fast-glob"
+import { BINARY_EXTS } from "../binary.js"
 
 export const grepTool = {
   name: "grep",
@@ -27,6 +28,7 @@ export const grepTool = {
     const results = []
 
     for (const file of files) {
+      if (BINARY_EXTS.has(path.extname(file).toLowerCase())) continue
       const filePath = path.join(dir, file)
       let content
       try {
