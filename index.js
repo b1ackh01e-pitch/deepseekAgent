@@ -29,6 +29,8 @@ if (process.argv[2] === "update") {
   }
   process.exit(0)
 }
+import fs from "fs/promises"
+import path from "path"
 import { agentLoop } from "./src/agent.js"
 import { loadConfig } from "./src/config.js"
 import { enableThinking } from "./src/thinking.js"
@@ -62,6 +64,36 @@ async function shutdown() {
 process.on("SIGINT", shutdown)
 process.on("SIGTERM", shutdown)
 
+
+async function maybeInit() {
+  const agentDir = path.join(process.cwd(), ".agent")
+  const settingsFile = path.join(agentDir, "settings.json")
+  const agentMd = path.join(agentDir, "AGENT.md")
+
+  // Проверяем есть ли уже .agent/
+  try { await fs.access(agentDir); return } catch {}
+
+  // Папка не существует — предлагаем инициализацию
+  const answer = (await ask(
+    c.yellow(`\n┌ Папка не инициализирована для работы с агентом.\n`) +
+    c.yellow(`└ `) + c.dim(`Создать .agent/settings.json и .agent/AGENT.md? [Y/n] `)
+  )).trim().toLowerCase()
+
+  if (answer === "n") { console.log(); return }
+
+  await fs.mkdir(agentDir, { recursive: true })
+
+  await fs.writeFile(settingsFile, JSON.stringify({
+    model: "deepseek-chat",
+    alwaysAllow: ["read_file", "glob", "grep", "todo_read"],
+    language: null
+  }, null, 2), "utf-8")
+
+  await fs.writeFile(agentMd, `# Project Instructions\n\nDescribe the project here so the agent understands the context.\n`, "utf-8")
+
+  console.log(c.dim(`\n[init] Created .agent/settings.json`))
+  console.log(c.dim(`[init] Created .agent/AGENT.md — edit it to add project instructions\n`))
+}
 
 async function main() {
   await loadConfig()
@@ -98,6 +130,7 @@ async function main() {
   }
 
   printBanner()
+  await maybeInit()
 
   while (true) {
     const input = await ask(c.bold("You: "))

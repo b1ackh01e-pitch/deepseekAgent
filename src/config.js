@@ -32,3 +32,12 @@ export async function loadConfig() {
 export function getConfig() {
   return _config ?? DEFAULTS
 }
+
+export async function saveConfig() {
+  if (!_config) return
+  const settingsPath = path.join(process.cwd(), ".agent", "settings.json")
+  try {
+    await fs.mkdir(path.dirname(settingsPath), { recursive: true })
+    await fs.writeFile(settingsPath, JSON.stringify(_config, null, 2), "utf-8")
+  } catch {}
+}
