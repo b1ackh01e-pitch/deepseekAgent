@@ -5,6 +5,7 @@ const DEFAULTS = {
   model: "deepseek-chat",
   thinkingModel: "deepseek-reasoner",
   contextLimit: 60000,
+  temperature: 0,
   alwaysAllow: ["read_file", "glob", "grep", "todo_read"],
   neverAllow: [],
   disallowedTools: [],

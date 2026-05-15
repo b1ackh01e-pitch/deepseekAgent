@@ -430,6 +430,23 @@ export async function cmdOptimizer() {
 }
 
 // ─────────────────────────────────────────────
+// /creative — переключить режим (точный ↔ рассуждения)
+// ─────────────────────────────────────────────
+export function cmdCreative() {
+  const config = getConfig()
+  const wasCreative = (config.temperature ?? 0) > 0.1
+  config.temperature = wasCreative ? 0 : 0.5
+
+  if (wasCreative) {
+    print(c.bold("\n[creative] OFF → точный режим\n"))
+    print(c.dim("  temperature: 0 — минимум галлюцинаций, строгие ответы\n\n"))
+  } else {
+    print(c.bold("\n[creative] ON → режим рассуждений\n"))
+    print(c.dim("  temperature: 0.5 — взвешивает варианты, рассуждает\n\n"))
+  }
+}
+
+// ─────────────────────────────────────────────
 // /model — информация о доступных моделях
 // ─────────────────────────────────────────────
 export function cmdModel() {
@@ -470,6 +487,7 @@ export async function handleCommand(input) {
     case "loop":
     case "proactive":    await cmdLoop(args); return true
     case "model":        cmdModel(); return true
+    case "creative":     cmdCreative(); return true
     case "optimizer":    await cmdOptimizer(); return true
     case "resume":       await cmdResume(); return true
     case "help":
@@ -495,6 +513,7 @@ function printHelp() {
     ["/batch <задача>",   "разбить задачу и выполнить параллельно"],
     ["/loop [N] <промпт>","запускать промпт каждые N минут (повтор — стоп)"],
     ["/model",            "информация о доступных моделях"],
+    ["/creative",         "переключить точный (t=0) ↔ рассуждения (t=0.5)"],
     ["/optimizer",        "включить/выключить code optimizer (PHP/JS/Go/CSS)"],
     ["/resume",           "восстановить предыдущую сессию"],
     ["/help",             "эта справка"],
