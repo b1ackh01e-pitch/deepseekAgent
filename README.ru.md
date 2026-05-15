@@ -25,9 +25,59 @@ agent
 agent update
 ```
 
-## Совет: экономия токенов на больших проектах
+## Code Optimizer (встроенный)
 
-Для больших проектов рекомендуется использовать [claudeSearch](https://github.com/skydeex/claudeSearch) совместно с агентом. Вместо чтения файлов целиком он даёт точный низкотокенный доступ к кодовой базе через структурный поиск (граф зависимостей), текстовый поиск и семантический поиск. Экономия — до 60–70% токенов по сравнению с полным чтением файлов.
+В агент встроен оптимизатор кода (порт [claudeSearch](https://github.com/skydeex/claudeSearch)). Вместо чтения файлов целиком извлекает только нужные части — список функций, тело конкретного метода, контекст вокруг строки. Экономия — 60–70% токенов по сравнению с полным чтением файлов.
+
+Включается командой `/optimizer` в чате или настройкой `"optimizer": true` в `.agent/settings.json`. Повторный `/optimizer` — выключает.
+
+| Инструмент | Описание |
+|---|---|
+| `code_outline` | Список всех функций/методов файла с номерами строк |
+| `code_definition` | Извлечь тело конкретной функции (с 3 строками контекста выше) |
+| `code_context` | Показать N строк вокруг номера строки (целевая отмечена `>>>`) |
+
+Поддерживаются: PHP, JS/JSX/TS/TSX, Go, CSS/SCSS/SASS/LESS, Astro. Для неподдерживаемых типов файлов агент автоматически переключается на `read_file`.
+
+### Добавить парсер для нового языка
+
+1. Создать `src/parsers/python.js` (за основу взять `php.js`):
+
+```js
+import { strip, esc } from "./utils.js"
+
+export default {
+  extensions: [".py"],
+
+  // Вернуть список функций/методов с номерами строк
+  outline(lines) {
+    const results = []
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/^\s*(?:async\s+)?def\s+(\w+)\s*\(/)
+      if (m) results.push({ name: m[1] + "()", line: i + 1 })
+    }
+    return results
+  },
+
+  // Вернуть номер строки начала метода, или null
+  findMethodStart(lines, methodName) {
+    const pattern = new RegExp(`^\\s*(?:async\\s+)?def\\s+${esc(methodName)}\\s*\\(`)
+    for (let i = 0; i < lines.length; i++) {
+      if (pattern.test(lines[i])) return i + 1
+    }
+    return null
+  }
+}
+```
+
+2. Зарегистрировать в `src/parsers/index.js`:
+
+```js
+import pythonParser from "./python.js"
+register(pythonParser)
+```
+
+Готово — `code_outline` и `code_definition` сразу начнут работать с `.py` файлами.
 
 ## Требования
 
@@ -64,6 +114,7 @@ agent --output-format=json "промпт"           # CI/скрипты — вы
 | `/batch <задача>` | Агент декомпозирует задачу и запускает подзадачи параллельно |
 | `/loop [N] <промпт>` | Запускать промпт каждые N секунд/минут/часов; повторный `/loop` останавливает |
 | `/resume` | Восстановить предыдущую сессию (сессия сохраняется автоматически при выходе) |
+| `/optimizer` | Включить/выключить code optimizer (PHP/JS/Go/CSS/Astro) |
 | `/model` | Информация о текущей модели |
 
 ## Инструменты агента
@@ -79,6 +130,9 @@ agent --output-format=json "промпт"           # CI/скрипты — вы
 | `web_search` | Поиск через DuckDuckGo без API-ключа |
 | `todo_write` / `todo_read` | Список задач с зависимостями внутри сессии |
 | `task` | Запуск подагентов: синхронно, параллельно или в фоне |
+| `code_outline` | Список функций/методов с номерами строк (optimizer) |
+| `code_definition` | Извлечь тело одной функции из файла (optimizer) |
+| `code_context` | Показать строки вокруг указанного номера строки (optimizer) |
 
 ## Разрешения
 
@@ -121,7 +175,8 @@ agent --output-format=json "промпт"           # CI/скрипты — вы
   "disallowedTools": [],
   "dangerouslyDisableSandbox": false,
   "mcpServers": {},
-  "language": null
+  "language": null,
+  "optimizer": false
 }
 ```
 
@@ -133,6 +188,7 @@ agent --output-format=json "промпт"           # CI/скрипты — вы
 | `dangerouslyDisableSandbox` | Снять ограничения sandbox в bash |
 | `mcpServers` | Подключение MCP-серверов |
 | `language` | Язык ответов агента (например `"Russian"`, `"English"`). Если не задан — агент подстраивается под язык пользователя |
+| `optimizer` | Включить инструменты оптимизатора (`code_outline`, `code_definition`, `code_context`) |
 
 ## Память (AGENT.md)
 

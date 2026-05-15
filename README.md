@@ -27,9 +27,59 @@ Get an API key: [platform.deepseek.com/api_keys](https://platform.deepseek.com/a
 agent update
 ```
 
-## Tip: Save Tokens on Large Codebases
+## Code Optimizer (built-in)
 
-For large projects, consider using [claudeSearch](https://github.com/skydeex/claudeSearch) alongside the agent. Instead of reading entire files, it provides precise low-token access to your codebase via structural search (dependency graph), text search, and semantic search. Saves up to 60–70% of tokens compared to full-file reads.
+The agent includes a built-in code optimizer (ported from [claudeSearch](https://github.com/skydeex/claudeSearch)). Instead of reading entire files, it extracts only the parts you need — function outlines, individual method bodies, and context around specific lines. Saves 60–70% of tokens compared to full-file reads.
+
+Enable with the `/optimizer` command in chat, or set `"optimizer": true` in `.agent/settings.json`. Run `/optimizer` again to disable.
+
+| Tool | Description |
+|---|---|
+| `code_outline` | List all functions/methods in a file with line numbers |
+| `code_definition` | Extract a specific function body (with 3 lines of context above) |
+| `code_context` | Show N lines around a line number (target marked with `>>>`) |
+
+Supported: PHP, JS/JSX/TS/TSX, Go, CSS/SCSS/SASS/LESS, Astro. For unsupported file types the agent falls back to `read_file` automatically.
+
+### Adding a new language parser
+
+1. Create `src/parsers/python.js` (use `php.js` as a template):
+
+```js
+import { strip, esc } from "./utils.js"
+
+export default {
+  extensions: [".py"],
+
+  // Return list of functions/methods with line numbers
+  outline(lines) {
+    const results = []
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/^\s*(?:async\s+)?def\s+(\w+)\s*\(/)
+      if (m) results.push({ name: m[1] + "()", line: i + 1 })
+    }
+    return results
+  },
+
+  // Return line number where the method starts, or null
+  findMethodStart(lines, methodName) {
+    const pattern = new RegExp(`^\\s*(?:async\\s+)?def\\s+${esc(methodName)}\\s*\\(`)
+    for (let i = 0; i < lines.length; i++) {
+      if (pattern.test(lines[i])) return i + 1
+    }
+    return null
+  }
+}
+```
+
+2. Register in `src/parsers/index.js`:
+
+```js
+import pythonParser from "./python.js"
+register(pythonParser)
+```
+
+That's it — `code_outline` and `code_definition` will work with `.py` files immediately.
 
 ## Requirements
 
@@ -66,6 +116,7 @@ Type directly in the chat:
 | `/batch <task>` | Agent decomposes the task and runs subtasks in parallel |
 | `/loop [N] <prompt>` | Run prompt every N seconds/minutes/hours; repeat `/loop` to stop |
 | `/resume` | Restore previous session (auto-saved on exit) |
+| `/optimizer` | Toggle code optimizer on/off (PHP/JS/Go/CSS/Astro) |
 | `/model` | Info about the current model |
 
 ## Tools
@@ -81,6 +132,9 @@ Type directly in the chat:
 | `web_search` | DuckDuckGo search, no API key required |
 | `todo_write` / `todo_read` | Task list with dependencies within a session |
 | `task` | Spawn sub-agents: sync, parallel, or background |
+| `code_outline` | List all functions/methods with line numbers (optimizer) |
+| `code_definition` | Extract a single function body from a file (optimizer) |
+| `code_context` | Show lines around a specific line number (optimizer) |
 
 ## Permissions
 
@@ -123,7 +177,8 @@ Auto-created on first run at `.agent/settings.json`:
   "disallowedTools": [],
   "dangerouslyDisableSandbox": false,
   "mcpServers": {},
-  "language": null
+  "language": null,
+  "optimizer": false
 }
 ```
 
@@ -135,6 +190,7 @@ Auto-created on first run at `.agent/settings.json`:
 | `dangerouslyDisableSandbox` | Remove bash sandbox restrictions |
 | `mcpServers` | Connect MCP servers |
 | `language` | Response language (e.g. `"Russian"`, `"English"`). If null — agent follows the user's language |
+| `optimizer` | Enable code optimizer tools (`code_outline`, `code_definition`, `code_context`) |
 
 ## Memory (AGENT.md)
 
