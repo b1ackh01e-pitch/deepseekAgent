@@ -117,6 +117,7 @@ Type directly in the chat:
 | `/loop [N] <prompt>` | Run prompt every N seconds/minutes/hours; repeat `/loop` to stop |
 | `/resume` | Restore previous session (auto-saved on exit) |
 | `/optimizer` | Toggle code optimizer on/off (PHP/JS/Go/CSS/Astro) |
+| `/creative` | Toggle precise mode (temperature=0) ↔ reasoning mode (temperature=0.5) |
 | `/model` | Info about the current model |
 
 ## Tools
