@@ -10,7 +10,8 @@ const DEFAULTS = {
   disallowedTools: [],
   dangerouslyDisableSandbox: false,
   mcpServers: {},
-  language: null
+  language: null,
+  optimizer: false
 }
 
 let _config = null
