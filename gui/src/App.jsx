@@ -5,6 +5,7 @@ import PermissionModal from './components/PermissionModal'
 import FileTree from './components/FileTree'
 import ActivityPanel from './components/ActivityPanel'
 import ChangedFiles from './components/ChangedFiles'
+import DirectorySelector from './components/DirectorySelector'
 import { Brain, Wifi, WifiOff } from 'lucide-react'
 
 function App() {
@@ -16,10 +17,12 @@ function App() {
     fileTree,
     activities,
     changedFiles,
+    currentDir,
     sendMessage, 
     answerPermission,
     approveAllChanges,
-    rejectAllChanges
+    rejectAllChanges,
+    changeDirectory
   } = useAgent()
 
   return (
@@ -48,7 +51,8 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Sidebar - File Tree */}
-        <div className="w-64 flex-shrink-0">
+        <div className="w-64 flex-shrink-0 flex flex-col">
+          <DirectorySelector currentDir={currentDir} onChange={changeDirectory} />
           <FileTree files={fileTree} />
         </div>
 

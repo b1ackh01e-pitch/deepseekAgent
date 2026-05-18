@@ -8,6 +8,7 @@ export function useAgent() {
   const [fileTree, setFileTree] = useState([])
   const [activities, setActivities] = useState([])
   const [changedFiles, setChangedFiles] = useState([])
+  const [currentDir, setCurrentDir] = useState('')
   const wsRef = useRef(null)
   const currentMessageRef = useRef('')
 
@@ -33,6 +34,7 @@ export function useAgent() {
       switch (data.type) {
         case 'file_tree':
           setFileTree(data.tree)
+          if (data.cwd) setCurrentDir(data.cwd)
           break
 
         case 'text':
@@ -135,6 +137,12 @@ export function useAgent() {
     }
   }, [])
 
+  const changeDirectory = useCallback((directory) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'change_directory', directory }))
+    }
+  }, [])
+
   return {
     messages,
     isConnected,
@@ -143,10 +151,12 @@ export function useAgent() {
     fileTree,
     activities,
     changedFiles,
+    currentDir,
     sendMessage,
     sendCommand,
     answerPermission,
     approveAllChanges,
-    rejectAllChanges
+    rejectAllChanges,
+    changeDirectory
   }
 }

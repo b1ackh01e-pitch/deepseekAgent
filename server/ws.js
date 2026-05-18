@@ -3,7 +3,7 @@ import { setOutputFormat, emit, setWs } from "../src/output.js"
 import { setPermissionHandler } from "../src/permissions.js"
 import { createPermissionHandler, resolvePermission } from "./permissions-ws.js"
 import { readdir, stat } from "fs/promises"
-import { join } from "path"
+import { join, chdir } from "path"
 
 let currentWs = null
 let changedFiles = []
@@ -48,7 +48,7 @@ export function createWSServer(wss) {
 
     // Send file tree on connection
     const fileTree = await buildFileTree(process.cwd())
-    ws.send(JSON.stringify({ type: "file_tree", tree: fileTree }))
+    ws.send(JSON.stringify({ type: "file_tree", tree: fileTree, cwd: process.cwd() }))
 
     ws.on("message", async (data) => {
       try {
@@ -92,6 +92,15 @@ async function handleMessage(message, ws) {
       // Reject all pending changes
       changedFiles = []
       ws.send(JSON.stringify({ type: "changed_files", files: changedFiles }))
+      break
+    case "change_directory":
+      try {
+        chdir(message.directory)
+        const newFileTree = await buildFileTree(process.cwd())
+        ws.send(JSON.stringify({ type: "file_tree", tree: newFileTree, cwd: process.cwd() }))
+      } catch (err) {
+        ws.send(JSON.stringify({ type: "error", message: `Failed to change directory: ${err.message}` }))
+      }
       break
     default:
       ws.send(JSON.stringify({ type: "error", message: "Unknown message type" }))
