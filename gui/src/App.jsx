@@ -2,10 +2,25 @@ import { useAgent } from './hooks/useAgent'
 import Chat from './components/Chat'
 import MessageInput from './components/MessageInput'
 import PermissionModal from './components/PermissionModal'
+import FileTree from './components/FileTree'
+import ActivityPanel from './components/ActivityPanel'
+import ChangedFiles from './components/ChangedFiles'
 import { Brain, Wifi, WifiOff } from 'lucide-react'
 
 function App() {
-  const { messages, isConnected, isThinking, pendingPermission, sendMessage, answerPermission } = useAgent()
+  const { 
+    messages, 
+    isConnected, 
+    isThinking, 
+    pendingPermission, 
+    fileTree,
+    activities,
+    changedFiles,
+    sendMessage, 
+    answerPermission,
+    approveAllChanges,
+    rejectAllChanges
+  } = useAgent()
 
   return (
     <div className="h-screen flex flex-col bg-[#0f0f0f]">
@@ -30,18 +45,42 @@ function App() {
         </div>
       </header>
 
-      {/* Chat Area */}
-      <Chat messages={messages} />
-
-      {/* Thinking Indicator */}
-      {isThinking && (
-        <div className="px-4 py-2 text-gray-400 text-sm flex items-center gap-2">
-          <div className="animate-pulse">Agent is thinking...</div>
+      {/* Main Content */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - File Tree */}
+        <div className="w-64 flex-shrink-0">
+          <FileTree files={fileTree} />
         </div>
-      )}
 
-      {/* Input Area */}
-      <MessageInput onSend={sendMessage} disabled={isThinking || !isConnected} />
+        {/* Center - Chat */}
+        <div className="flex-1 flex flex-col">
+          <Chat messages={messages} />
+          
+          {/* Thinking Indicator */}
+          {isThinking && (
+            <div className="px-4 py-2 text-gray-400 text-sm flex items-center gap-2">
+              <div className="animate-pulse">Agent is thinking...</div>
+            </div>
+          )}
+
+          {/* Input Area */}
+          <MessageInput onSend={sendMessage} disabled={isThinking || !isConnected} />
+        </div>
+
+        {/* Right Sidebar - Activity & Changed Files */}
+        <div className="w-64 flex-shrink-0 flex flex-col">
+          <div className="flex-1">
+            <ActivityPanel activities={activities} />
+          </div>
+          <div className="h-64">
+            <ChangedFiles 
+              changedFiles={changedFiles} 
+              onApproveAll={approveAllChanges}
+              onRejectAll={rejectAllChanges}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* Permission Modal */}
       <PermissionModal permission={pendingPermission} onAnswer={answerPermission} />

@@ -2,10 +2,14 @@ import express from "express"
 import { WebSocketServer } from "ws"
 import { fileURLToPath } from "url"
 import { dirname, join } from "path"
+import { chdir } from "process"
 import { createWSServer } from "./ws.js"
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+
+// Change working directory to project root so agent can find .agent/settings.json
+chdir(join(__dirname, ".."))
 
 const app = express()
 const PORT = process.env.PORT || 3000

@@ -5,6 +5,9 @@ export function useAgent() {
   const [isConnected, setIsConnected] = useState(false)
   const [isThinking, setIsThinking] = useState(false)
   const [pendingPermission, setPendingPermission] = useState(null)
+  const [fileTree, setFileTree] = useState([])
+  const [activities, setActivities] = useState([])
+  const [changedFiles, setChangedFiles] = useState([])
   const wsRef = useRef(null)
   const currentMessageRef = useRef('')
 
@@ -28,6 +31,10 @@ export function useAgent() {
       const data = JSON.parse(event.data)
 
       switch (data.type) {
+        case 'file_tree':
+          setFileTree(data.tree)
+          break
+
         case 'text':
           currentMessageRef.current += data.text
           setMessages(prev => {
@@ -41,6 +48,16 @@ export function useAgent() {
 
         case 'tool_call':
           setMessages(prev => [...prev, { role: 'tool_call', tool: data.tool, args: data.args }])
+          setActivities(prev => [...prev, { 
+            type: data.tool, 
+            description: JSON.stringify(data.args).slice(0, 100) 
+          }])
+          if (data.tool === 'write_file' || data.tool === 'edit_file') {
+            setChangedFiles(prev => [...prev, { 
+              path: data.args.path, 
+              type: data.tool === 'write_file' ? 'write' : 'edit' 
+            }])
+          }
           break
 
         case 'tool_result':
@@ -73,6 +90,10 @@ export function useAgent() {
             setIsThinking(true)
           }
           break
+
+        case 'changed_files':
+          setChangedFiles(data.files)
+          break
       }
     }
 
@@ -102,13 +123,30 @@ export function useAgent() {
     }
   }, [pendingPermission])
 
+  const approveAllChanges = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'approve_all' }))
+    }
+  }, [])
+
+  const rejectAllChanges = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'reject_all' }))
+    }
+  }, [])
+
   return {
     messages,
     isConnected,
     isThinking,
     pendingPermission,
+    fileTree,
+    activities,
+    changedFiles,
     sendMessage,
     sendCommand,
-    answerPermission
+    answerPermission,
+    approveAllChanges,
+    rejectAllChanges
   }
 }

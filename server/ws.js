@@ -1,13 +1,54 @@
 import { agentLoop } from "../src/agent.js"
-import { setOutputFormat, emit } from "../src/output.js"
+import { setOutputFormat, emit, setWs } from "../src/output.js"
 import { setPermissionHandler } from "../src/permissions.js"
 import { createPermissionHandler, resolvePermission } from "./permissions-ws.js"
+import { readdir, stat } from "fs/promises"
+import { join } from "path"
 
 let currentWs = null
+let changedFiles = []
+
+async function buildFileTree(dir, basePath = "") {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    const tree = []
+    
+    for (const entry of entries) {
+      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
+      
+      const fullPath = join(dir, entry.name)
+      const relativePath = basePath ? join(basePath, entry.name) : entry.name
+      
+      if (entry.isDirectory()) {
+        tree.push({
+          name: entry.name,
+          type: 'directory',
+          path: relativePath,
+          children: await buildFileTree(fullPath, relativePath)
+        })
+      } else {
+        tree.push({
+          name: entry.name,
+          type: 'file',
+          path: relativePath
+        })
+      }
+    }
+    
+    return tree
+  } catch (err) {
+    return []
+  }
+}
 
 export function createWSServer(wss) {
-  wss.on("connection", (ws) => {
+  wss.on("connection", async (ws) => {
     currentWs = ws
+    changedFiles = []
+
+    // Send file tree on connection
+    const fileTree = await buildFileTree(process.cwd())
+    ws.send(JSON.stringify({ type: "file_tree", tree }))
 
     ws.on("message", async (data) => {
       try {
@@ -24,7 +65,7 @@ export function createWSServer(wss) {
 
     // Set up WebSocket mode for output
     setOutputFormat("ws")
-    emit.setWs(ws)
+    setWs(ws)
 
     // Set up permission handler
     setPermissionHandler(createPermissionHandler(ws))
@@ -41,6 +82,16 @@ async function handleMessage(message, ws) {
       break
     case "permission":
       resolvePermission(message.answer)
+      break
+    case "approve_all":
+      // Approve all pending changes
+      changedFiles = []
+      ws.send(JSON.stringify({ type: "changed_files", files: changedFiles }))
+      break
+    case "reject_all":
+      // Reject all pending changes
+      changedFiles = []
+      ws.send(JSON.stringify({ type: "changed_files", files: changedFiles }))
       break
     default:
       ws.send(JSON.stringify({ type: "error", message: "Unknown message type" }))
