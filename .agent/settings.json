@@ -1,10 +1,20 @@
 {
-  "model": "deepseek-chat",
-  "thinkingModel": "deepseek-reasoner",
+  "model": "qwen3:14b",
+  "thinkingModel": "qwen3:14b",
   "contextLimit": 60000,
-  "alwaysAllow": ["read_file", "glob", "grep", "todo_read"],
+  "alwaysAllow": [
+    "read_file",
+    "glob",
+    "grep",
+    "todo_read",
+    "bash"
+  ],
   "neverAllow": [],
   "disallowedTools": [],
   "dangerouslyDisableSandbox": false,
-  "mcpServers": {}
+  "mcpServers": {},
+  "language": null,
+  "approvedDirs": [
+    "test"
+  ]
 }

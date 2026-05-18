@@ -26,8 +26,8 @@ let client = null
 
 function getClient() {
   if (!client) client = new OpenAI({
-    baseURL: "https://api.deepseek.com",
-    apiKey: process.env.DEEPSEEK_API_KEY
+    baseURL: "http://localhost:11434/v1",
+    apiKey: "ollama"   // можно любую заглушку
   })
   return client
 }
@@ -139,25 +139,24 @@ function formatToolResult(name, args, result) {
 export async function agentLoop(userMessage) {
   await initialize()
   await runHooks("UserPromptSubmit", { message: userMessage })
+// Инициализируем messages если сессия пустая
+if (getMessages().length === 0) {
+const memory = await loadMemory()
+const { language } = getConfig()
+const systemContent = [
+  "Ты — полезный AI-ассистент. Отвечай естественно на русском.",
+  "Никогда не показывай JSON tool calls пользователю.",
+  "Если нужно использовать инструмент — используй его и сразу покажи результат.",
+  "Не объясняй свои действия, просто выполняй запрос напрямую.",
+  "Будь прямым и инициативным.",
+  language
+  ? `Always respond in ${language}. Code, commands, variable names, and technical identifiers must remain in English.`
+  : "Always respond in the same language the user is writing in. Do not switch languages mid-conversation.",
+  memory ? `\n\n${memory}` : ""
+].join(" ")
 
-  // Инициализируем messages если сессия пустая
-  if (getMessages().length === 0) {
-    const memory = await loadMemory()
-    const { language } = getConfig()
-    const systemContent = [
-      "You are a helpful coding assistant with access to tools.",
-      "Always read a file before editing it.",
-      "Use glob to list files and grep to search content — prefer these over bash for any read-only file exploration.",
-      "Use todo_write to track multi-step tasks.",
-      "Be concise in your responses.",
-      "Do not attempt to read binary files (images, archives, executables, media, fonts, databases) unless the user explicitly asks you to inspect them.",
-      language
-        ? `Always respond in ${language}. Code, commands, variable names, and technical identifiers must remain in English.`
-        : "Always respond in the same language the user is writing in. Do not switch languages mid-conversation.",
-      memory ? `\n\n${memory}` : ""
-    ].join(" ")
-    pushMessage({ role: "system", content: systemContent })
-  }
+pushMessage({ role: "system", content: systemContent })
+}
 
   // Создаём чекпоинт перед каждым ходом
   createCheckpoint()

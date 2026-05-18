@@ -9,6 +9,11 @@ const _approvedDirs = new Set()
 const _approvedTools = new Set()
 
 let _dirsLoaded = false
+let _customPermissionHandler = null
+
+export function setPermissionHandler(handler) {
+  _customPermissionHandler = handler
+}
 
 function ensureDirsLoaded() {
   if (_dirsLoaded) return
@@ -86,7 +91,9 @@ export async function checkPermission(toolName, args) {
       c.yellow(`└ `) + c.dim(`[y/Enter] один раз  [a] запомнить для этого проекта  [N] отклонить: `)
   }
 
-  const answer = (await waitForInput(prompt)).trim().toLowerCase()
+  const answer = _customPermissionHandler
+    ? (await _customPermissionHandler(prompt)).trim().toLowerCase()
+    : (await waitForInput(prompt)).trim().toLowerCase()
 
   if (answer === "d" && filePath) {
     const dir = path.dirname(path.resolve(filePath))
