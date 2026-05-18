@@ -8,6 +8,7 @@ import { grepTool } from "./tools/grep.js"
 import { webSearchTool } from "./tools/web_search.js"
 import { todoWriteTool, todoReadTool } from "./tools/todo.js"
 import { taskTool, taskResultTool, initTaskTool } from "./tools/task.js"
+import { codeOutlineTool, codeDefinitionTool, codeContextTool } from "./tools/optimizer.js"
 import { loadMemory } from "./memory.js"
 import { loadMcpTools } from "./mcp.js"
 import { checkPermission } from "./permissions.js"
@@ -34,22 +35,31 @@ function getClient() {
 
 let _initialized = false
 let TOOLS = []
+let _mcpTools = []
 
-async function initialize() {
-  if (_initialized) return
-  _initialized = true
+const OPTIMIZER_TOOLS = [codeOutlineTool, codeDefinitionTool, codeContextTool]
 
-  const mcpTools = await loadMcpTools()
-  const { disallowedTools } = getConfig()
+export function rebuildTools() {
+  const { disallowedTools, optimizer } = getConfig()
 
   TOOLS = [
     readTool, bashTool, writeTool, editTool,
     globTool, grepTool, webSearchTool,
     todoWriteTool, todoReadTool,
     taskTool, taskResultTool,
-    ...mcpTools
+    ..._mcpTools,
+    ...(optimizer ? OPTIMIZER_TOOLS : [])
   ].filter(t => !disallowedTools.includes(t.name))
 
+  _openAITools = null // сбросить кеш
+}
+
+async function initialize() {
+  if (_initialized) return
+  _initialized = true
+
+  _mcpTools = await loadMcpTools()
+  rebuildTools()
   initTaskTool(agentLoop)
 }
 
@@ -99,6 +109,9 @@ function formatToolCall(name, args) {
     case "todo_read":    return `Todo read`
     case "todo_write":   return `Todo write`
     case "task":         return `Task ${(args.description ?? args.parallel?.join(", ") ?? "").slice(0, 60)}`
+    case "code_outline":    return `Outline ${args.path}`
+    case "code_definition": return `Definition ${args.name} in ${args.path}`
+    case "code_context":    return `Context line ${args.line} in ${args.path}`
     default:             return `${name} ${JSON.stringify(args).slice(0, 60)}`
   }
 }
@@ -123,6 +136,16 @@ function formatToolResult(name, args, result) {
     return `${count} совпадений`
   }
 
+  if (name === "code_outline") {
+    const count = result.split("\n").filter(Boolean).length
+    return `${count} символов`
+  }
+
+  if (name === "code_definition" || name === "code_context") {
+    const lines = result.split("\n").length
+    return `${lines} строк`
+  }
+
   if (name === "web_search") {
     return result.slice(0, 120) + (result.length > 120 ? "…" : "")
   }
@@ -139,24 +162,31 @@ function formatToolResult(name, args, result) {
 export async function agentLoop(userMessage) {
   await initialize()
   await runHooks("UserPromptSubmit", { message: userMessage })
-// Инициализируем messages если сессия пустая
-if (getMessages().length === 0) {
-const memory = await loadMemory()
-const { language } = getConfig()
-const systemContent = [
-  "Ты — полезный AI-ассистент. Отвечай естественно на русском.",
-  "Никогда не показывай JSON tool calls пользователю.",
-  "Если нужно использовать инструмент — используй его и сразу покажи результат.",
-  "Не объясняй свои действия, просто выполняй запрос напрямую.",
-  "Будь прямым и инициативным.",
-  language
-  ? `Always respond in ${language}. Code, commands, variable names, and technical identifiers must remain in English.`
-  : "Always respond in the same language the user is writing in. Do not switch languages mid-conversation.",
-  memory ? `\n\n${memory}` : ""
-].join(" ")
 
-pushMessage({ role: "system", content: systemContent })
-}
+  // Инициализируем messages если сессия пустая
+  if (getMessages().length === 0) {
+    const memory = await loadMemory()
+    const { language, optimizer } = getConfig()
+    const systemContent = [
+      "You are a helpful coding assistant with access to tools.",
+      "Always read a file before editing it.",
+      "Use glob to list files and grep to search content — prefer these over bash for any read-only file exploration.",
+      "Use todo_write to track multi-step tasks.",
+      "Be concise in your responses.",
+      "CRITICAL: Never guess or fabricate file contents, paths, function names, or technical details. Always use tools (read_file, glob, grep) to verify before making claims.",
+      "If you are unsure about something, say so honestly instead of guessing. Use tools to check.",
+      "Never assume code structure — always look at the actual files first.",
+      "Do not attempt to read binary files (images, archives, executables, media, fonts, databases) unless the user explicitly asks you to inspect them.",
+      optimizer
+        ? "Optimizer is ON. For supported files (PHP, JS/TS, Go, CSS/SCSS) prefer code_outline + code_definition over read_file to save context. Use read_file only for unsupported file types or when you need the entire file."
+        : "",
+      language
+        ? `Always respond in ${language}. Code, commands, variable names, and technical identifiers must remain in English.`
+        : "Always respond in the same language the user is writing in. Do not switch languages mid-conversation.",
+      memory ? `\n\n${memory}` : ""
+    ].join(" ")
+    pushMessage({ role: "system", content: systemContent })
+  }
 
   // Создаём чекпоинт перед каждым ходом
   createCheckpoint()
@@ -173,6 +203,7 @@ pushMessage({ role: "system", content: systemContent })
       model: getModel(),
       messages,
       tools: buildOpenAITools(),
+      temperature: getConfig().temperature ?? 0,
       stream: true
     })
 

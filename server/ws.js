@@ -48,7 +48,7 @@ export function createWSServer(wss) {
 
     // Send file tree on connection
     const fileTree = await buildFileTree(process.cwd())
-    ws.send(JSON.stringify({ type: "file_tree", tree }))
+    ws.send(JSON.stringify({ type: "file_tree", tree: fileTree }))
 
     ws.on("message", async (data) => {
       try {
